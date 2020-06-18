@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "arxiv2kindle"
+version = "0.1.2"
+description = "A simple tool to recompile arxiv papers to kindle-like format."
+authors = ["Dmitriy Serdyuk <dmitriy@serdyuk.cc>"]
+readme = "README.md"
+license = "MIT"
+homepage = "https://github.com/dmitriy-serdyuk/arxiv2kindle"
+repository = "https://github.com/dmitriy-serdyuk/arxiv2kindle"
+keywords = ["arxiv", "latex", "kindle"]
+packages = [
+    { include = "arxiv2kindle.py" },
+]
+classifiers = [
+    "Environment :: Console",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+include = [
+    "LICENSE",
+    "README.md"
+]
+
+[tool.poetry.scripts]
+arxiv2kindle = 'arxiv2kindle:run'
+
+[tool.poetry.dependencies]
+python = "^3.7"
+lxml = "^4.5.1"
+requests = "*"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"

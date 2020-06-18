@@ -6,7 +6,6 @@ import lxml.html as html
 import logging
 import re
 import os
-import os.path
 import sys
 import subprocess
 import tempfile
@@ -242,5 +241,9 @@ def main(query, width, height, margin, user_agent, landscape, dest_dir):
             sys.stdout.buffer.write(fin.read())
 
 
-if __name__ == "__main__":
+def run():
     main(**vars(parse_args()))
+
+
+if __name__ == "__main__":
+    run()

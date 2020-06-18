@@ -13,6 +13,10 @@ or
 arxiv2kindle --width 6 --height 4 --margin 0.2 --landscape --dest-dir ./ https://arxiv.org/abs/1802.08395
 ```
 
+## Installation
+
+`arxiv2kindle` requires `pip` version 10.0 or greater. 
+
 ## Acknowledgements
 
 This script is based on this amazing [notebook](https://gist.github.com/bshillingford/6259986edca707ca58dd).

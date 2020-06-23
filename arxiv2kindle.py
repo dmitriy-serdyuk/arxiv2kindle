@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
-import requests
-import lxml.html as html
+import arxiv
 import logging
 import re
 import os
@@ -13,19 +12,14 @@ import tarfile
 from pathlib import Path
 
 
-DEFAULT_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:21.0) "
-              "Gecko/20100101 Firefox/21.0")
-ARXIV_REGEX = r'(https?://.*?/)?(?P<id>\d{4}\.\d{4,5}(v\d{1,2})?)'
-
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 HELP_EPILOG = """\
 Example usage:
 
-  %(prog)s --width 4 --height 6 --margin 0.2 https://arxiv.org/abs/1802.08395 > out.pdf
-  %(prog)s --width 6 --height 4 --margin 0.2 --landscape --dest-dir ./ https://arxiv.org/abs/1802.08395
+  %(prog)s --width 4 --height 6 --margin 0.2 1802.08395 - > out.pdf
+  %(prog)s --width 6 --height 4 --margin 0.2 --landscape 1802.08395 ./
 """
 
 
@@ -36,6 +30,9 @@ def parse_args():
         epilog=HELP_EPILOG
         )
     parser.add_argument("query", help="arxiv paper url")
+    parser.add_argument(
+        "dest", type=Path,
+        help="destination dir, if `-` provided, the file is streamed to stdout")
     group = parser.add_argument_group("Geometry")
     group.add_argument(
         '-W', "--width", default=4, type=float,
@@ -52,40 +49,33 @@ def parse_args():
     group.add_argument(
         "--portrait", dest='landscape', action='store_false',
         help="produce a portrait file (default option)")
-    parser.add_argument(
-        "--user-agent", default=DEFAULT_UA,
-        help="user agent to use for downloading the paper")
-    parser.add_argument(
-        "--dest-dir", type=Path, default=None,
-        help="destination dir, if none provided, the file is streamed to stdout"
-    )
     args = parser.parse_args()
     return args
 
 
-def download(query, user_agent):
-    arxiv_id = re.match(ARXIV_REGEX, query).group('id')
-    arxiv_abs = 'http://arxiv.org/abs/' + arxiv_id
-    arxiv_pdf = 'http://arxiv.org/pdf/' + arxiv_id
-    arxiv_pgtitle = html.fromstring(
-        requests.get(arxiv_abs).text.encode('utf8')).xpath('/html/head/title/text()')[0]
-    arxiv_title = re.sub(r'\s+', ' ', re.sub(r'^\[[^]]+\]\s*', '', arxiv_pgtitle), re.DOTALL)
+def download(query):
+    try:
+        paper, = arxiv.query(query, max_results=1)
+    except ValueError:
+        raise SystemError('Paper not found')
+    arxiv_id = paper['id']
+    arxiv_title = paper['title']
 
     logger.info(f"Converting paper: [{arxiv_id}] {arxiv_title}")
-    logger.info(f"Pdf link: {arxiv_pdf}")
 
     temp_dir = Path(tempfile.mkdtemp(prefix='arxiv2kindle_'))
 
-    url = 'http://arxiv.org/e-print/' + arxiv_id
-    logger.info(f"Downloading the source from {url}...")
-    with open(temp_dir / 'src.tar.gz', 'wb') as f:
-        r = requests.get(url, headers={'User-Agent': user_agent},
-                         allow_redirects=True)
-        assert r.status_code == 200
-        f.write(r.content)
+    logger.info(f"Downloading the source...")
+    arxiv.arxiv.download(
+        paper, slugify=lambda _: 'src', dirpath=str(temp_dir),
+        prefer_source_tarfile=True)
 
     logger.info(f'Extracting the source...')
-    with tarfile.open(temp_dir / 'src.tar.gz') as f:
+    tar_file = temp_dir / 'src.tar.gz'
+    if not tar_file.exists():
+        raise SystemError('Paper sources are not available')
+
+    with tarfile.open(tar_file) as f:
         f.extractall(temp_dir)
 
     def is_main_file(file_name):
@@ -216,10 +206,10 @@ def check_prerec(landscape):
             raise SystemError("no pdftk found (required for landscape mode)")
 
 
-def main(query, width, height, margin, user_agent, landscape, dest_dir):
+def main(query, dest, width, height, margin, landscape):
     check_prerec(landscape)
     
-    tmp_dir, main_file, title = download(query, user_agent)
+    tmp_dir, main_file, title = download(query)
     if landscape:
         width, height = height, width
     geom_settings = dict(
@@ -234,11 +224,13 @@ def main(query, width, height, margin, user_agent, landscape, dest_dir):
     if landscape:
         rotate_pdf(pdf_file)
 
-    if dest_dir is not None:
-        os.rename(pdf_file, dest_dir / (title + '.pdf'))
-    else:
+    if dest.is_dir():
+        os.rename(pdf_file, dest / (title + '.pdf'))
+    elif str(dest) == '-':
         with open(main_file.with_suffix('.pdf'), 'rb') as fin:
             sys.stdout.buffer.write(fin.read())
+    else:
+        os.rename(pdf_file, dest)
 
 
 def run():

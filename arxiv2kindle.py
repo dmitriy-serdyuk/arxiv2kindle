@@ -58,10 +58,10 @@ def download(query):
         paper, = arxiv.query(query, max_results=1)
     except ValueError:
         raise SystemError('Paper not found')
-    arxiv_id = paper['id']
+    arxiv_url = paper['arxiv_url']
     arxiv_title = paper['title']
 
-    logger.info(f"Converting paper: [{arxiv_id}] {arxiv_title}")
+    logger.info(f"Converting paper: [{arxiv_url}] {arxiv_title}")
 
     temp_dir = Path(tempfile.mkdtemp(prefix='arxiv2kindle_'))
 

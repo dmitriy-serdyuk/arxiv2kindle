@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "arxiv2kindle"
-version = "0.1.3"
+version = "0.1.4"
 description = "A simple tool to recompile arxiv papers to kindle-like format."
 authors = ["Dmitriy Serdyuk <dmitriy@serdyuk.cc>"]
 readme = "README.md"
